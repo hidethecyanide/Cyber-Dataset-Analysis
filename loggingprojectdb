@@ -1,6 +1,13 @@
-CREATE DATABASE LoggingProjectDB;
-USE LoggingProjectDB;
+/* Database Systems, Coronel/Morris */
+/* Type of SQL : MySQL  */
+/* Be sure to name the schema loggingprojectdb  */
 
+USE loggingprojectdb;
+
+/* Device vendor uses the standard that the 
+first half of a MAC address represents a vendor.
+Phone number is included as this is useful information for
+network managers.*/
 CREATE TABLE DEVICE_VENDOR (
   DEVICE_MAC_ADDR_VENDOR    VARCHAR(6),
   VENDOR_NAME               VARCHAR(20),
@@ -8,6 +15,9 @@ CREATE TABLE DEVICE_VENDOR (
   PRIMARY KEY(DEVICE_MAC_ADDR_VENDOR)
 );
 
+/* These insert statements emulate how MAC addresses are organized,
+but major companies are unlikely just to have 1 phone number for IT support
+yet for the purposes of this database this data is the expected format. */
 INSERT INTO DEVICE_VENDOR VALUES('A34D07','SecTech',3294550932);
 INSERT INTO DEVICE_VENDOR VALUES('324AF4','Incdev',4933250019);
 INSERT INTO DEVICE_VENDOR VALUES('9E3365','Devmac',1324654364);
@@ -24,9 +34,12 @@ INSERT INTO DEVICE_VENDOR VALUES('B03354','Telemeric',8564530777);
 INSERT INTO DEVICE_VENDOR VALUES('093F0F','Utah Instruments',5540853441);
 INSERT INTO DEVICE_VENDOR VALUES('1673AA','Hardall',8796454344);
 
-
+/*While the name could be used as a primary key,
+a surrogate i.e. an arbitrary key that has no real world 
+equivalent is better here due to the constant updates,
+name changes, and version changes programs experience. */
 CREATE TABLE SOFTWARE_PROGRAM (
-  SOFT_ID           INT,
+  SOFT_ID           INT AUTO_INCREMENT,
   SOFT_NAME         VARCHAR(15),
   SOFT_COMPANY      VARCHAR(20),
   SOFT_VERSION      VARCHAR(10),
@@ -34,6 +47,8 @@ CREATE TABLE SOFTWARE_PROGRAM (
   PRIMARY KEY(SOFT_ID)
 );
 
+/* Theses values are equivalent to real world registers, 
+though the description of the program varies wildly in length. */
 INSERT INTO SOFTWARE_PROGRAM VALUES(0,'Appsafe','Softsol','3.02.33','Application access control service');
 INSERT INTO SOFTWARE_PROGRAM VALUES(1,'IPSGo','Quizit','2.302.10','IPS setup and logging service');
 INSERT INTO SOFTWARE_PROGRAM VALUES(2,'NGFW100','Quizit','1.0.0','New firewall software for NGFW functions');
@@ -50,9 +65,10 @@ INSERT INTO SOFTWARE_PROGRAM VALUES(12,'MyVPN','Vipinol','1.32.501','VPN concent
 INSERT INTO SOFTWARE_PROGRAM VALUES(13,'HIDSPoint','Macroline','2.73.41','Host IPS program on disk and BIOS boot');
 INSERT INTO SOFTWARE_PROGRAM VALUES(14,'TCPMaster','Macroline','3.0.01','SSL/TLS encapsulator and TCP platform');
 
-
+/* The Device table is laid out in a similar way to
+network audits companies perform when taking inventory of all devices. */
 CREATE TABLE DEVICE (
-  DEVICE_ID               INT,
+  DEVICE_ID               INT AUTO_INCREMENT,
   DEVICE_TYPE             VARCHAR(14),
   DEVICE_IP_ADDR          BIGINT,
   DEVICE_NET_LOCATION     VARCHAR(15),
@@ -63,6 +79,9 @@ CREATE TABLE DEVICE (
   FOREIGN KEY(DEVICE_MAC_ADDR_VENDOR) REFERENCES DEVICE_VENDOR(DEVICE_MAC_ADDR_VENDOR)
 );
 
+/* While some values could be NULL, it is highly unlikely and 
+bad practice to leave any of the values NULL, but as for the MAC
+address values are mandatory for the functions of the database. */
 INSERT INTO DEVICE VALUES(0,'NETWORK_DEVICE',124554000001,'EAST WING 4','Router','7BB390','3A22DD'); 
 INSERT INTO DEVICE VALUES(1,'HOST_DEVICE',124554000034,'EAST WING 4','Workstation','45676F','03F53F');
 INSERT INTO DEVICE VALUES(2,'HOST_DEVICE',124554000035,'EAST WING 4','Workstation','45676F','03F53F');
@@ -81,6 +100,9 @@ INSERT INTO DEVICE VALUES(14,'NETWORK_DEVICE',132052473133,'NORTH WING 3','Jump 
 INSERT INTO DEVICE VALUES(15,'NETWORK_DEVICE',132255013127,'NORTH WING 2','Router','093F0F','4F7035'); 
 INSERT INTO DEVICE VALUES(16,'HOST_DEVICE',132255013129,'NORTH WING 2','Administrator PC','1673AA','F3326B');
 
+/* This table displays additional information for
+certain devices, with the most important being OSI
+level which ranges from 1 to 7 for network devices.*/
 CREATE TABLE NETWORK_DEVICE (
   DEVICE_ID             INT,
   NET_NUM_OF_INTERFACES INT,
@@ -89,6 +111,9 @@ CREATE TABLE NETWORK_DEVICE (
   FOREIGN KEY (DEVICE_ID) REFERENCES Device(DEVICE_ID)
 );
 
+/* While a large simplification, these values
+allow network administrators to gain a better
+understanding of the device. */
 INSERT INTO NETWORK_DEVICE VALUES(3,4,3);
 INSERT INTO NETWORK_DEVICE VALUES(14,2,2);
 INSERT INTO NETWORK_DEVICE VALUES(15,3,3);
@@ -98,6 +123,10 @@ INSERT INTO NETWORK_DEVICE VALUES(8,3,7);
 INSERT INTO NETWORK_DEVICE VALUES(11,10,2);
 INSERT INTO NETWORK_DEVICE VALUES(13,2,3);
 
+/* This table adds additional information to
+host devices, which the most important being the OS, 
+and while present for network devices,
+the OS is more clear and needed for host devices in most cases. */
 CREATE TABLE HOST_DEVICE (
   DEVICE_ID             INT,
   HOST_OS               VARCHAR(10),
@@ -105,7 +134,9 @@ CREATE TABLE HOST_DEVICE (
   PRIMARY KEY(DEVICE_ID),
   FOREIGN KEY (DEVICE_ID) REFERENCES Device(DEVICE_ID)
 );
-
+/* While some of the RAM values may not be standard, the idea is
+that ine should be able to tell the capability and likely use
+of a device through this value along with the OS. */
 INSERT INTO HOST_DEVICE VALUES (9,'Windows','64kb');
 INSERT INTO HOST_DEVICE VALUES (16,'Linux','64kb');
 INSERT INTO HOST_DEVICE VALUES (1,'MAC','32mb');
@@ -116,7 +147,9 @@ INSERT INTO HOST_DEVICE VALUES (7,'IOS','24kb');
 INSERT INTO HOST_DEVICE VALUES (10,'Linux','64mb');
 INSERT INTO HOST_DEVICE VALUES (12,'Windows','64mb');
 
-/*CREATE TRIGGER check_device_in_child_tables
+/* The following is code that could be used to enforce to mandatory participation
+in the parent/child relationship between device and host_device and network_device.
+CREATE TRIGGER check_device_in_child_tables
 AFTER INSERT OR UPDATE ON Device
 FOR EACH ROW
 BEGIN
@@ -127,6 +160,10 @@ BEGIN
 END;
 */  
 
+/* This table is a surrogate table to apply the M:M relationship
+software programs and devices have, and with the primary key being a composite,
+combinations are allowed once though each device and program may appear more than once
+while having a minimum of 1 appearance. */
 CREATE TABLE INSTALLATIONS (
   SOFT_ID         INT,
   DEVICE_ID       INT,
@@ -136,6 +173,10 @@ CREATE TABLE INSTALLATIONS (
   FOREIGN KEY (DEVICE_ID) REFERENCES DEVICE(DEVICE_ID)
 );
 
+/* The data here is representative of the M:M relationship mentioned earlier,
+but the data of installation can give interesting characteristics as well.
+While two devices with the same program could differ in version installed,
+for the purposed of this table this data allows seamless joins and queries. */
 INSERT INTO INSTALLATIONS VALUES (4,0,'2014-03-12');
 INSERT INTO INSTALLATIONS VALUES (7,0,'2014-03-12');
 INSERT INTO INSTALLATIONS VALUES (10,0,'2014-03-12');
@@ -206,14 +247,19 @@ INSERT INTO INSTALLATIONS VALUES (6,16,'2020-01-16');
 INSERT INTO INSTALLATIONS VALUES (8,16,'2024-010-30');
 INSERT INTO INSTALLATIONS VALUES (13,16,'2021-06-25');
 
+/* This table includes rudimentary information about
+employees that would be responsible for assigning actions to logs,
+along with what team they belong to. */
 CREATE TABLE ADMINISTRATOR (
-  ADMIN_ID     INT,
+  ADMIN_ID     INT AUTO_INCREMENT,
   ADMIN_FNAME  VARCHAR(10),
   ADMIN_LNAME  VARCHAR(20),
   ADMIN_TEAM   VARCHAR(15),
   PRIMARY KEY(ADMIN_ID)
 );
 
+/* These values, primarily the team attribute, represent the type
+of information found in larger organizations as opposed to smaller operations.*/
 INSERT INTO ADMINISTRATOR VALUES (0,'Jamison','Northrop','IT Support');
 INSERT INTO ADMINISTRATOR VALUES (1,'Larry','Danzig','IR');
 INSERT INTO ADMINISTRATOR VALUES (2,'Rebecca','Nguyen','Network Mgmt');
@@ -226,13 +272,19 @@ INSERT INTO ADMINISTRATOR VALUES (8,'Daniel','Graves','IR');
 INSERT INTO ADMINISTRATOR VALUES (9,'Mark','Phillips','IR');
 INSERT INTO ADMINISTRATOR VALUES (10,'Will','Davidson','IT Support');
 
+/* This table represents simple actions that would be understood
+by the administrators, although to an outside user
+the key terms may be not understood as to what they mean. */
 CREATE TABLE ACTIONS (
-  ACTION_ID   INT,
+  ACTION_ID   INT AUTO_INCREMENT,
   ACTION_NAME VARCHAR(10),
   ACTION_TYPE VARCHAR(10),
   PRIMARY KEY(ACTION_ID)
 ); 
 
+/* The last attribute in this entity related to risk management
+in that there is transference, acceptance, and so on, and each action
+involves one particular method of risk management */
 INSERT INTO ACTIONS VALUES (0,'Ignore','Accept');
 INSERT INTO ACTIONS VALUES (1,'Default','Accept');
 INSERT INTO ACTIONS VALUES (2,'Review','Transfer');
@@ -244,6 +296,9 @@ INSERT INTO ACTIONS VALUES (7,'Kick','Avoid');
 INSERT INTO ACTIONS VALUES (8,'Isolate','Mitigate');
 INSERT INTO ACTIONS VALUES (9,'IR send','Mitigate');
 
+/* This table would likely come from an outside source or organization
+where formatting differs, but all use a similar naming scheme and
+identification method this table represents. */
 CREATE TABLE APT (
   APT_ID                  INT,
   APT_NAME                VARCHAR(15),
@@ -253,6 +308,9 @@ CREATE TABLE APT (
   PRIMARY KEY(APT_ID)
 );
 
+/* The data in this table is much like what one would see in an
+official compiled list, and one particular relationship that is depicted here
+is that certain animals appear for certain countries as part of an unofficial naming scheme.*/
 INSERT INTO APT VALUES(32,'Trash Panda','CN','Ransomware phishing threat through text', 'Ransomware');
 INSERT INTO APT VALUES(36,'Slimy Panda','CN',"Group focused on insecure OT Networks","Cracking");
 INSERT INTO APT VALUES(37,'Unitary Panda','CN','Virus Development group','Virus');
@@ -265,8 +323,11 @@ INSERT INTO APT VALUES(54,'Lothric','PK','Remote access trojan focused group','T
 INSERT INTO APT VALUES(51,'Lorian','PK','Supply chain attacks compromise','Cracking');
 INSERT INTO APT VALUES(20,'Funny Fox','EG','Group focused on DDOS on Web Servers','DDOS');
 
+/* This table out of all that are part of this database
+could see itself with innumerable attributes, but for this database
+the focus is on extracting information through queries.*/
 CREATE TABLE LOG (
-  LOG_ID         BIGINT,
+  LOG_ID         BIGINT AUTO_INCREMENT,
   LOG_TIMESTAMP  TIMESTAMP NOT NULL,
   ADMIN_ID       INT NOT NULL,
   ACTION_ID      INT NOT NULL,
@@ -279,6 +340,9 @@ CREATE TABLE LOG (
   
 );
 
+/* These values represent information gained from one or more events that devices
+would assign a time based on the line of event timestamps. Very few logs reference APTs
+but the relationship is very important. */
 INSERT INTO LOG VALUES (0, '2023-03-04 5:03:21', 7, 0, NULL, 'ERROR_LOG');
 INSERT INTO LOG VALUES (1, '2023-03-04 5:04:05', 9, 2, NULL, 'ACCESS_LOG');
 INSERT INTO LOG VALUES (2, '2023-03-04 7:52:44', 2, 8, NULL, 'SECURITY_LOG');
@@ -291,29 +355,31 @@ INSERT INTO LOG VALUES (8, '2023-03-09 03:03:21', 8, 9, 44, 'SECURITY_LOG');
 INSERT INTO LOG VALUES (9, '2023-03-09 08:03:21', 8, 9, 44, 'ACCESS_LOG');
 INSERT INTO LOG VALUES (10, '2023-03-22 14:55:52', 1, 2, NULL, 'SECURITY_LOG');
 INSERT INTO LOG VALUES (11, '2023-03-22 14:57:24', 1, 8, 36, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (12, '2023-04-03 17:22:13', 9, 2, 20, 'ERROR_LOG');
-INSERT INTO LOG VALUES (13, '2023-04-04 17:44:17', 0, 2, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (14, '2023-04-04 21:04:33', 5, 7, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (15, '2023-04-04 21:07:39', 3, 7, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (16, '2023-04-04 21:07:30', 3, 0, NULL, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (17, '2023-04-04 22:21:26', 7, 0, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (18, '2023-04-04 22:41:06', 0, 0, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (19, '2023-05-04 15:10:19', 8, 3, NULL, 'SECURTY_LOG');
-INSERT INTO LOG VALUES (20, '2023-05-04 15:12:52', 1, 4, 36, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (21, '2023-05-04 15:12:52', 7, 3, 36, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (22, '2023-05-04 15:13:56', 4, 1, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (23, '2023-05-04 16:56:36', 4, 8, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (24, '2023-05-04 16:56:43', 2, 7, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (25, '2023-05-04 16:57:19', 2, 3, NULL, 'ERROR_LOG');
-INSERT INTO LOG VALUES (26, '2023-05-04 16:58:21', 4, 0, NULL, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (27, '2023-05-04 16:59:18', 5, 2, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (28, '2023-05-04 17:03:37', 1, 2, NULL, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (29, '2023-05-04 18:42:41', 8, 1, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (30, '2023-05-04 18:48:02', 0, 0, NULL, 'ACCESS_LOG');
-INSERT INTO LOG VALUES (31, '2023-05-04 21:07:08', 6, 0, NULL, 'SECURITY_LOG');
-INSERT INTO LOG VALUES (32, '2023-05-04 22:48:02', 0, 0, NULL, NULL);
-INSERT INTO LOG VALUES (33, '2023-05-04 23:07:08', 6, 0, NULL, NULL);
+INSERT INTO LOG VALUES (12, '2023-04-23 17:22:13', 9, 2, 20, 'ERROR_LOG');
+INSERT INTO LOG VALUES (13, '2023-04-24 17:44:17', 0, 2, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (14, '2023-04-24 21:04:33', 5, 7, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (15, '2023-04-24 21:07:39', 3, 7, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (16, '2023-04-24 21:07:30', 3, 0, NULL, 'SECURITY_LOG');
+INSERT INTO LOG VALUES (17, '2023-04-24 22:21:26', 7, 0, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (18, '2023-04-24 22:41:06', 0, 0, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (19, '2023-05-24 15:10:19', 8, 3, NULL, 'SECURTY_LOG');
+INSERT INTO LOG VALUES (20, '2023-05-24 15:12:52', 1, 4, 36, 'SECURITY_LOG');
+INSERT INTO LOG VALUES (21, '2023-05-24 15:12:52', 7, 3, 36, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (22, '2023-05-24 15:13:56', 4, 1, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (23, '2023-05-24 16:56:36', 4, 8, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (24, '2023-05-24 16:56:43', 2, 7, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (25, '2023-05-24 16:57:19', 2, 3, NULL, 'ERROR_LOG');
+INSERT INTO LOG VALUES (26, '2023-05-24 16:58:21', 4, 0, NULL, 'SECURITY_LOG');
+INSERT INTO LOG VALUES (27, '2023-05-24 16:59:18', 5, 2, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (28, '2023-05-24 17:03:37', 1, 2, NULL, 'SECURITY_LOG');
+INSERT INTO LOG VALUES (29, '2023-05-24 18:42:41', 8, 1, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (30, '2023-05-24 18:48:02', 0, 0, NULL, 'ACCESS_LOG');
+INSERT INTO LOG VALUES (31, '2023-05-24 21:07:08', 6, 0, NULL, 'SECURITY_LOG');
+INSERT INTO LOG VALUES (32, '2023-05-24 22:48:02', 0, 0, NULL, NULL);
+INSERT INTO LOG VALUES (33, '2023-05-24 23:07:08', 6, 0, NULL, NULL);
 
+/* This table adds information to certain logs in that
+it tells the permissions used to access a certain resource. */
 CREATE TABLE ACCESS_LOG (
   LOG_ID           BIGINT,
   ACCESS_RESOURCE  VARCHAR(15),
@@ -322,6 +388,9 @@ CREATE TABLE ACCESS_LOG (
   FOREIGN KEY(LOG_ID) REFERENCES LOG(LOG_ID)
 );
 
+/* The access_type attribute relates to the standard Linux permission
+representation system, and while not every device has a Linux OS, 
+this representation of permissions is much simpler that of Windows.*/
 INSERT INTO ACCESS_LOG VALUES (1,'DNS Cache',571);
 INSERT INTO ACCESS_LOG VALUES (5,'Key Manager',111);
 INSERT INTO ACCESS_LOG VALUES (6,'Siem logs',050);
@@ -334,6 +403,8 @@ INSERT INTO ACCESS_LOG VALUES (27,'Key Manager',111);
 INSERT INTO ACCESS_LOG VALUES (29,'DNS Cache',571);
 INSERT INTO ACCESS_LOG VALUES (30,'DNS Cache',571);
 
+/* This table in a list of common errors akin to the web
+error format that the error_log table will reference.*/
 CREATE TABLE ERROR_CLASS (
   ERROR_NUM       INT,
   ERROR_TYPE      VARCHAR(15),
@@ -342,17 +413,21 @@ CREATE TABLE ERROR_CLASS (
   PRIMARY KEY(ERROR_NUM)
 );
 
+/* This data gives simplified views of how errors are categorized and how descriptions are given. */
 INSERT INTO ERROR_CLASS VALUES(404,'Web','Page Unresponsive','Reset internet connection and check NIC card.');
 INSERT INTO ERROR_CLASS VALUES(1033,'Server','Abnormal Termination','Change TCP port and patch OS');
 INSERT INTO ERROR_CLASS VALUES(405,'Web','Method Not Allowed','Clear browser cache and reset to default settings');
 INSERT INTO ERROR_CLASS VALUES(203,'Server','Unknown Request','Refractor request and create new TCP connection');
 INSERT INTO ERROR_CLASS VALUES(161,'Boot','BIOS Memory Allocation Failed','Replace RAM and clean hard disk');
 INSERT INTO ERROR_CLASS VALUES(6011,'Application','Hosting Failed','Check Application white list and boot in VM');
-INSERT INTO ERROR_CLASS VALUES(42,'OS','Unexpected process termination','Revert to init process and cleasr zombie PIDs');
+INSERT INTO ERROR_CLASS VALUES(42,'OS','Unexpected process termination','Revert to init process and clear zombie PIDs');
 INSERT INTO ERROR_CLASS VALUES(6224,'Application','Host Denied','Check application hash and employee key manager');
 INSERT INTO ERROR_CLASS VALUES(103,'Hardware',' Computer overheating','Turn PC off fully and leave for 15 minutes');
 INSERT INTO ERROR_CLASS VALUES(98,'Boot','Citical package not found','Boot OS from disk or restore from backup');
 
+/* This table adds additional information for error logs,
+and through some smart queries one can relate the process ID to the 
+device which is vital information. */
 CREATE TABLE ERROR_LOG (
   LOG_ID         BIGINT,
   ERROR_PROCESS  INT,
@@ -362,6 +437,8 @@ CREATE TABLE ERROR_LOG (
   FOREIGN KEY(ERROR_NUM) REFERENCES ERROR_CLASS(ERROR_NUM)
 );
 
+/* These values are in the range of values one would find
+for common error IDs and process IDs.*/
 INSERT INTO ERROR_LOG VALUES(0,1422,203);
 INSERT INTO ERROR_LOG VALUES(3,1,98);
 INSERT INTO ERROR_LOG VALUES(4,202,1033);
@@ -374,6 +451,8 @@ INSERT INTO ERROR_LOG VALUES(22,705,103);
 INSERT INTO ERROR_LOG VALUES(23,12,42);
 INSERT INTO ERROR_LOG VALUES(25,1884,405);
 
+/* This table adds additional information to security logs by
+assigning an alert level and which part of the 'CIA triad' was compromised' */
 CREATE TABLE SECURITY_LOG (
   LOG_ID                BIGINT,
   SECURITY_ALERT_LEVEL  INT,
@@ -382,6 +461,8 @@ CREATE TABLE SECURITY_LOG (
   FOREIGN KEY(LOG_ID) REFERENCES LOG(LOG_ID)
 );
 
+/* With some lower level alerts, some have NULL values for the 
+CIA triad as there was no significant compromise. */
 INSERT INTO SECURITY_LOG VALUES (2,1,'A');
 INSERT INTO SECURITY_LOG VALUES (8,4,'C');
 INSERT INTO SECURITY_LOG VALUES (10,0,NULL);
@@ -393,55 +474,61 @@ INSERT INTO SECURITY_LOG VALUES (26,2,'I');
 INSERT INTO SECURITY_LOG VALUES (28,0,NULL);
 INSERT INTO SECURITY_LOG VALUES (31,1,NULL);
 
+/* This table bridges devices and softwares to administrators and actions,
+and many events may relate to the same log but with differing timestamps. */
 CREATE TABLE EVENT (
-  EVENT_ID     BIGINT,
+  EVENT_ID     BIGINT AUTO_INCREMENT,
   SOFT_ID      INT NOT NULL,
   DEVICE_ID    INT NOT NULL,
   LOG_ID       BIGINT NOT NULL,
-  EVENT_TIMESTAMP TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  EVENT_TIMESTAMP TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(EVENT_ID),
   FOREIGN KEY(SOFT_ID, DEVICE_ID) REFERENCES INSTALLATIONS(SOFT_ID, DEVICE_ID),
   FOREIGN KEY(LOG_ID) REFERENCES LOG(LOG_ID)
 );
-INSERT INTO EVENT VALUES(0,0,8,0,'2021-03-22 3:00:42');
-INSERT INTO EVENT VALUES(1,0,4,0,'2021-03-22 3:13:49');
-INSERT INTO EVENT VALUES(2,3,12,1,'2021-03-22 3:56:05');
-INSERT INTO EVENT VALUES(3,10,13,0,'2021-03-22 4:06:33');
-INSERT INTO EVENT VALUES(4,13,2,1,'2021-03-22 5:36:42');
-INSERT INTO EVENT VALUES(5,8,16,2,'2021-03-22 8:34:42');
-INSERT INTO EVENT VALUES(6,10,0,4,'2021-03-22 13:14:42');
-INSERT INTO EVENT VALUES(7,7,11,3,'2021-03-22 22:05:42');
-INSERT INTO EVENT VALUES(8,12,3,7,'2021-03-23 1:58:42');
-INSERT INTO EVENT VALUES(9,3,1,6,'2021-03-23 9:22:42');
-INSERT INTO EVENT VALUES(10,14,7,6,'2021-03-23 9:23:42');
-INSERT INTO EVENT VALUES(11,5,16,5,'2021-03-23 12:07:42');
-INSERT INTO EVENT VALUES(12,5,8,8,'2021-03-23 14:47:42');
-INSERT INTO EVENT VALUES(13,0,8,8,'2021-03-23 15:22:42');
-INSERT INTO EVENT VALUES(14,6,6,9,'2021-03-23 15:43:42');
-INSERT INTO EVENT VALUES(15,1,11,10,'2021-03-23 21:51:42');
-INSERT INTO EVENT VALUES(16,7,13,11,'2021-03-23 22:51:42');
-INSERT INTO EVENT VALUES(17,10,13,12,'2021-03-24 3:32:42');
-INSERT INTO EVENT VALUES(18,4,9,14,'2021-03-24 3:41:42');
-INSERT INTO EVENT VALUES(19,2,3,13,'2021-03-24 4:00:42');
-INSERT INTO EVENT VALUES(20,14,7,15,'2021-03-24 4:03:42');
-INSERT INTO EVENT VALUES(21,6,1,16,'2021-03-24 7:56:42');
-INSERT INTO EVENT VALUES(22,4,0,17,'2021-03-24 7:59:42');
-INSERT INTO EVENT VALUES(23,10,0,17,'2021-03-24 9:17:42');
-INSERT INTO EVENT VALUES(24,12,9,18,'2021-03-25 10:44:42');
-INSERT INTO EVENT VALUES(25,7,8,19,'2021-03-25 15:13:42');
-INSERT INTO EVENT VALUES(26,13,16,20,'2021-03-26 2:01:42');
-INSERT INTO EVENT VALUES(27,7,15,21,'2021-03-26 2:06:42');
-INSERT INTO EVENT VALUES(28,0,10,22,'2021-03-26 3:50:42');
-INSERT INTO EVENT VALUES(29,6,2,23,'2021-03-26 4:30:42');
-INSERT INTO EVENT VALUES(30,13,2,24,'2021-03-26 7:34:42');
-INSERT INTO EVENT VALUES(31,5,1,25,'2021-03-26 7:38:42');
-INSERT INTO EVENT VALUES(32,0,8,26,'2021-03-26 11:11:42');
-INSERT INTO EVENT VALUES(33,4,9,27,'2021-03-26 11:14:42');
-INSERT INTO EVENT VALUES(34,5,10,28,'2021-03-26 14:08:42');
-INSERT INTO EVENT VALUES(35,14,7,29,'2021-03-26 20:20:42');
-INSERT INTO EVENT VALUES(36,6,16,30,'2021-03-26 21:35:42');
-INSERT INTO EVENT VALUES(37,12,12,31,'2021-03-27 3:25:42');
-INSERT INTO EVENT VALUES(38,13,11,32,'2021-03-27 6:34:42');
-INSERT INTO EVENT VALUES(39,0,8,33,'2021-03-27 6:38:42');
+
+/* This data is like one would see in general computer logs,
+but with the amount of foreign keys and references finding more
+information and statistics about events is much easier. */
+INSERT INTO EVENT VALUES(0,0,8,0,'2023-05-22 3:00:42');
+INSERT INTO EVENT VALUES(1,0,4,0,'2023-05-22 3:13:49');
+INSERT INTO EVENT VALUES(2,3,12,1,'2023-05-22 3:56:05');
+INSERT INTO EVENT VALUES(3,10,13,0,'2023-05-22 4:06:33');
+INSERT INTO EVENT VALUES(4,13,2,1,'2023-05-22 5:36:42');
+INSERT INTO EVENT VALUES(5,8,16,2,'2023-05-22 8:34:42');
+INSERT INTO EVENT VALUES(6,10,0,4,'2023-05-22 13:14:42');
+INSERT INTO EVENT VALUES(7,7,11,3,'2023-05-22 22:05:42');
+INSERT INTO EVENT VALUES(8,12,3,7,'2023-05-23 1:58:42');
+INSERT INTO EVENT VALUES(9,3,1,6,'2023-05-23 9:22:42');
+INSERT INTO EVENT VALUES(10,14,7,6,'2023-05-23 9:23:42');
+INSERT INTO EVENT VALUES(11,5,16,5,'2023-05-23 12:07:42');
+INSERT INTO EVENT VALUES(12,5,8,8,'2023-05-23 14:47:42');
+INSERT INTO EVENT VALUES(13,0,8,8,'2023-05-23 15:22:42');
+INSERT INTO EVENT VALUES(14,6,6,9,'2023-05-23 15:43:42');
+INSERT INTO EVENT VALUES(15,1,11,10,'2023-05-23 21:51:42');
+INSERT INTO EVENT VALUES(16,7,13,11,'2023-05-23 22:51:42');
+INSERT INTO EVENT VALUES(17,10,13,12,'2023-05-24 3:32:42');
+INSERT INTO EVENT VALUES(18,4,9,14,'2023-05-24 3:41:42');
+INSERT INTO EVENT VALUES(19,2,3,13,'2023-05-24 4:00:42');
+INSERT INTO EVENT VALUES(20,14,7,15,'2023-05-24 4:03:42');
+INSERT INTO EVENT VALUES(21,6,1,16,'2023-05-24 7:56:42');
+INSERT INTO EVENT VALUES(22,4,0,17,'2023-05-24 7:59:42');
+INSERT INTO EVENT VALUES(23,10,0,17,'2023-05-24 9:17:42');
+INSERT INTO EVENT VALUES(24,12,9,18,'2023-05-25 10:44:42');
+INSERT INTO EVENT VALUES(25,7,8,19,'2023-05-25 15:13:42');
+INSERT INTO EVENT VALUES(26,13,16,20,'2023-05-26 2:01:42');
+INSERT INTO EVENT VALUES(27,7,15,21,'2023-05-26 2:06:42');
+INSERT INTO EVENT VALUES(28,0,10,22,'2023-05-26 3:50:42');
+INSERT INTO EVENT VALUES(29,6,2,23,'2023-05-26 4:30:42');
+INSERT INTO EVENT VALUES(30,13,2,24,'2023-05-26 7:34:42');
+INSERT INTO EVENT VALUES(31,5,1,25,'2023-05-26 7:38:42');
+INSERT INTO EVENT VALUES(32,0,8,26,'2023-05-26 11:11:42');
+INSERT INTO EVENT VALUES(33,4,9,27,'2023-05-26 11:14:42');
+INSERT INTO EVENT VALUES(34,5,10,28,'2023-05-26 14:08:42');
+INSERT INTO EVENT VALUES(35,14,7,29,'2023-05-26 20:20:42');
+INSERT INTO EVENT VALUES(36,6,16,30,'2023-05-26 21:35:42');
+INSERT INTO EVENT VALUES(37,12,12,31,'2023-05-27 3:25:42');
+INSERT INTO EVENT VALUES(38,13,11,32,'2023-05-27 6:34:42');
+INSERT INTO EVENT VALUES(39,0,8,33,'2023-05-27 6:38:42');
 
 
