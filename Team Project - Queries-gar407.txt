@@ -1,0 +1,124 @@
+USE LoggingProjectDB;
+
+/* Database Systems, Coronel/Morris */
+/* Type of SQL : MySQL  */
+
+/* Part 1 Requrement 2
+This is a select statement that uses at least one join, concatenation, and distinct clause 
+The aim of this query is to display all administrators that have assigned the ignore action at least once
+The join is to see actions and administrators on the log table, the distinct is so that if more than
+one ignore was used, their name only appears once, and the concatonation displays both the name components at once.*/
+SELECT DISTINCT
+  CONCAT(A.ADMIN_FNAME, ' ', A.ADMIN_LNAME) AS FullName,
+  A.ADMIN_TEAM
+FROM LOG L
+JOIN ADMINISTRATOR A ON L.ADMIN_ID = A.ADMIN_ID
+JOIN ACTIONS AC ON L.ACTION_ID = AC.ACTION_ID
+WHERE AC.ACTION_NAME = 'Ignore';
+
+
+/*Part 1 Requrement 3
+This is a select statement that includes at least one subquery
+The subqeury is used to get the count of all error logs per device vendor 
+(through joins to event, installations, and device)
+then the main query selects the vendors with at least 2 error logs*/
+SELECT *
+FROM (
+  SELECT 
+    DV.VENDOR_NAME,
+    DV.VENDOR_IT_SUPPORT_NUM,
+    COUNT(*) AS ErrorLogCount
+  FROM EVENT E
+  JOIN INSTALLATIONS I ON E.SOFT_ID = I.SOFT_ID AND E.DEVICE_ID = I.DEVICE_ID
+  JOIN DEVICE D ON I.DEVICE_ID = D.DEVICE_ID
+  JOIN DEVICE_VENDOR DV ON D.DEVICE_MAC_ADDR_VENDOR = DV.DEVICE_MAC_ADDR_VENDOR
+  JOIN LOG L ON E.LOG_ID = L.LOG_ID
+  WHERE L.LOG_TYPE = 'ERROR_LOG'
+  GROUP BY DV.VENDOR_NAME, DV.VENDOR_IT_SUPPORT_NUM
+) AS ErrorCounts
+WHERE ErrorCounts.ErrorLogCount >= 2;
+
+/*Part 2 query 1
+This query displays relevent error information including solutions
+on error logs that where assigned the "mitigate" action class*/
+SELECT 
+  EL.ERROR_PROCESS,
+  EL.ERROR_NUM,
+  EC.ERROR_DESCRIPT,
+  EC.ERROR_SOLUTION,
+  A.ACTION_NAME
+FROM LOG L
+JOIN ERROR_LOG EL ON L.LOG_ID = EL.LOG_ID
+JOIN ERROR_CLASS EC ON EL.ERROR_NUM = EC.ERROR_NUM
+JOIN ACTIONS A ON L.ACTION_ID = A.ACTION_ID
+WHERE L.LOG_TYPE = 'ERROR_LOG'
+  AND A.ACTION_TYPE = 'Mitigate';
+
+/*Part 1 Requrement 2
+This query uses a subquery to count the logs according to
+network device OSI level and log type
+The main query then uses aggregate functions to find the average, 
+standard deviation, and count accross the different log types per OSI level*/
+
+SELECT  
+  NET_OSI_LEVEL,
+  SUM(log_count) AS total_logs,
+  AVG(log_count) AS avg_logs_per_type,
+  STDDEV(log_count) AS stddev_logs_per_type
+FROM (
+  SELECT     
+    ND.NET_OSI_LEVEL,
+    L.LOG_TYPE,
+    COUNT(*) AS log_count
+  FROM EVENT E
+  JOIN INSTALLATIONS I ON E.SOFT_ID = I.SOFT_ID AND E.DEVICE_ID = I.DEVICE_ID
+  JOIN DEVICE D ON I.DEVICE_ID = D.DEVICE_ID
+  JOIN NETWORK_DEVICE ND ON D.DEVICE_ID = ND.DEVICE_ID
+  JOIN LOG L ON E.LOG_ID = L.LOG_ID 
+  WHERE L.LOG_TYPE IN ('ACCESS_LOG', 'ERROR_LOG', 'SECURITY_LOG')   
+    AND D.DEVICE_TYPE = 'NETWORK_DEVICE'
+  GROUP BY ND.NET_OSI_LEVEL, L.LOG_TYPE
+) AS logs_grouped
+GROUP BY NET_OSI_LEVEL
+ORDER BY NET_OSI_LEVEL;
+
+/* Bones Trigger on insert
+This trigger runs when a new row is inserted into installations,
+where if a date is not provided for the date_of_installations attribute,
+the row will be inserted useing the current date for the attribute
+*/
+DELIMITER $$
+
+CREATE TRIGGER before_install_insert
+BEFORE INSERT ON INSTALLATIONS
+FOR EACH ROW
+BEGIN
+  IF NEW.DATE_OF_INSTALL IS NULL THEN
+    SET NEW.DATE_OF_INSTALL = CURRENT_DATE();
+  END IF;
+END $$
+
+DELIMITER ;
+/* THis insert statement will have the current date appear insted of NULL when inserted */
+INSERT INTO INSTALLATIONS VALUES(2,7,NULL);
+
+/* Bonus Trigger deletion
+This query will run when a log is deleted from the log table,
+where the event logs that have the corresponding log_id in the
+foreign key attribute, to avoid illegal reference issues, will also be deleted
+*/
+DELIMITER $$
+
+CREATE TRIGGER after_log_delete
+AFTER DELETE ON LOG
+FOR EACH ROW
+BEGIN
+  DELETE FROM EVENT WHERE LOG_ID = OLD.LOG_ID;
+END $$
+
+DELIMITER ;
+
+/*This is a delete statement that when ran will run the trigger,
+with the result being that the event logs referencing log 33 will be deleted*/
+DELETE FROM LOG
+WHERE LOG.ID = 33;
